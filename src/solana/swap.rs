@@ -6,7 +6,6 @@ use jupiter_swap_api_client::JupiterSwapApiClient;
 use solana_client::nonblocking::rpc_client::RpcClient;
 use solana_sdk::address_lookup_table::state::AddressLookupTable;
 use solana_sdk::address_lookup_table::AddressLookupTableAccount;
-use solana_sdk::compute_budget::ComputeBudgetInstruction;
 use solana_sdk::message::v0::Message;
 use solana_sdk::pubkey::Pubkey;
 use solana_sdk::signature::Keypair;

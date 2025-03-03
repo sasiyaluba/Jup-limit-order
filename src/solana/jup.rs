@@ -1,7 +1,6 @@
-use std::{env, str::FromStr, sync::Arc};
+use std::sync::Arc;
 
 use anyhow::Result;
-use jito_sdk_rust::JitoJsonRpcSDK;
 use jupiter_swap_api_client::{
     quote::QuoteRequest,
     swap::{SwapInstructionsResponse, SwapRequest},
@@ -29,7 +28,7 @@ pub async fn get_swap_ix(
         ..QuoteRequest::default()
     };
     let quote_response = jup.quote(&quote_request).await.unwrap();
-    println!("quote resp {:?}", quote_response);
+    println!("报价 {:?}", quote_response);
     let out_amount = quote_response.out_amount;
     let swap_ix_response = jup
         .swap_instructions(&SwapRequest {
