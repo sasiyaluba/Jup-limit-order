@@ -1,6 +1,6 @@
 use std::{collections::HashMap, env, sync::Arc, time::Duration};
 
-use anyhow::{anyhow, Result};
+use anyhow::{anyhow, Ok, Result};
 use jito_sdk_rust::JitoJsonRpcSDK;
 use jupiter_swap_api_client::JupiterSwapApiClient;
 use reqwest::Client;
@@ -50,56 +50,56 @@ impl OrderBook {
         tip_amount: Option<u64>,
     ) -> Result<Uuid> {
         let order_id = Uuid::new_v4();
-
-        let order = Order {
-            order_id,
-            user,
-            price,
-            input_mint,
-            output_mint,
-            amount,
-            slippage_bps,
-            tip_amount,
-        };
-
-        self.orders.insert(order_id.clone(), order.clone());
-
-        let (tx, rx) = oneshot::channel();
-        self.cancel_tasks.insert(order_id.clone(), tx);
-
-        let rpc = self.rpc.clone();
-        let http = self.http.clone();
-        let jito = self.jito.clone();
-        let jup = self.jup.clone();
-        let keypair = self.keypair.clone();
-        let tax_account = self.tax_account;
-        let tax_bps = self.tax_bps;
-        let slippage_bps = order.slippage_bps;
-        tokio::spawn(async move {
-            let result = tokio::select! {
-                _ = rx => {
-                    Err(anyhow!("Task canceled"))
-                }
-                res = _order(
-                    rpc,
-                    jito,
-                    jup,
-                    keypair,
-                    tax_account,
-                    tax_bps,
-                    slippage_bps,
-                    tip_amount,
-                    http,
-                    order,
-                )
-                => res,
-            };
-            if let Err(_) = result {
-                println!("Deal task failed or was canceled");
-            }
-        });
-
         Ok(order_id)
+        // let order = Order {
+        //     order_id,
+        //     user,
+        //     price,
+        //     input_mint,
+        //     output_mint,
+        //     amount,
+        //     slippage_bps,
+        //     tip_amount,
+        // };
+
+        // self.orders.insert(order_id.clone(), order.clone());
+
+        // let (tx, rx) = oneshot::channel();
+        // self.cancel_tasks.insert(order_id.clone(), tx);
+
+        // let rpc = self.rpc.clone();
+        // let http = self.http.clone();
+        // let jito = self.jito.clone();
+        // let jup = self.jup.clone();
+        // let keypair = self.keypair.clone();
+        // let tax_account = self.tax_account;
+        // let tax_bps = self.tax_bps;
+        // let slippage_bps = order.slippage_bps;
+        // tokio::spawn(async move {
+        //     let result = tokio::select! {
+        //         _ = rx => {
+        //             Err(anyhow!("Task canceled"))
+        //         }
+        //         res = _order(
+        //             rpc,
+        //             jito,
+        //             jup,
+        //             keypair,
+        //             tax_account,
+        //             tax_bps,
+        //             slippage_bps,
+        //             tip_amount,
+        //             http,
+        //             order,
+        //         )
+        //         => res,
+        //     };
+        //     if let Err(_) = result {
+        //         println!("Deal task failed or was canceled");
+        //     }
+        // });
+
+        // Ok(order_id)
     }
 
     // 取消订单
@@ -118,7 +118,7 @@ async fn _order(
     rpc: Arc<RpcClient>,
     jito: Arc<jito_sdk_rust::JitoJsonRpcSDK>,
     jup: Arc<JupiterSwapApiClient>,
-    keypair: Arc<solana_sdk::signature::Keypair>,
+    user_keypair: Keypair,
     tax_account: Pubkey,
     tax_bps: u16,
     slippage_bps: u16,
@@ -127,18 +127,18 @@ async fn _order(
     order: Order,
 ) -> Result<()> {
     let until_price = order.price;
-    let input_mint = order.input_mint;
-    let output_mint = order.output_mint;
+    let input_mint: Pubkey = order.input_mint.parse()?;
+    let output_mint: Pubkey = order.output_mint.parse()?;
     let amount = order.amount;
     loop {
-        let now_price = get_price(http.clone(), &input_mint).await?;
+        let now_price = get_price(http.clone(), &order.input_mint).await?;
         println!("now price {:?}", now_price);
         if (now_price - until_price).abs() < 0.01 {
             swap_with_tax(
                 jup,
                 rpc,
                 jito,
-                user_keypair,
+                &user_keypair,
                 tax_account,
                 tax_bps,
                 amount,
@@ -151,26 +151,4 @@ async fn _order(
         }
         tokio::time::sleep(Duration::from_millis(800)).await;
     }
-}
-
-pub fn init_order_book() -> Result<OrderBook> {
-    let rpc = Arc::new(RpcClient::new(env::var("RPC_URL")?));
-    let http = Arc::new(Client::new());
-    let jito = Arc::new(JitoJsonRpcSDK::new(&env::var("JITO_URL")?, None));
-    let jup = Arc::new(JupiterSwapApiClient::new("JUP_URL".to_string()));
-    let keypair = Arc::new(Keypair::new()); // 替换为实际密钥对
-    let tax_account = Pubkey::new_unique(); // 替换为实际税收账户
-
-    Ok(OrderBook {
-        orders: HashMap::new(),
-        tokens: HashMap::new(),
-        tax_account,
-        tax_bps: 100,
-        cancel_tasks: HashMap::new(),
-        http,
-        jito,
-        jup,
-        rpc,
-        keypair,
-    })
 }

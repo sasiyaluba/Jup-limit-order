@@ -155,6 +155,17 @@ pub async fn get_price(client: Arc<Client>, mint: &str) -> Result<f32> {
     Err(anyhow!("未获得代币 {} 的价格", mint))
 }
 
+use std::env;
+/// 建立mysql连接
+/// 需要预配置MYSQL_DATABASE_URL在.env中
+pub fn establish_connection() -> diesel::MysqlConnection {
+    let database_url = env::var("MYSQL_DATABASE_URL")
+        .or_else(|_| env::var("DATABASE_URL"))
+        .expect("DATABASE_URL must be set");
+    <diesel::MysqlConnection as diesel::Connection>::establish(&database_url)
+        .unwrap_or_else(|_| panic!("Error connecting to {}", database_url))
+}
+
 #[tokio::test]
 async fn test() {
     let client = Arc::new(Client::new());

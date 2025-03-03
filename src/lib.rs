@@ -1,4 +1,6 @@
 pub mod app;
+pub mod db;
+pub mod encode;
 pub mod jito;
 pub mod jup;
 pub mod swap;
